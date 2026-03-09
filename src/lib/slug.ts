@@ -1,0 +1,16 @@
+export function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[\s]+/g, "-")
+    .replace(/[^\w\u0900-\u097F-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+}
+
+export function generateUniqueSlug(title: string): string {
+  const base = generateSlug(title);
+  const suffix = Math.random().toString(36).substring(2, 7);
+  return `${base}-${suffix}`;
+}
