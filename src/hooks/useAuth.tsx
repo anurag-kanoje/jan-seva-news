@@ -9,7 +9,7 @@ interface AuthContextType {
   role: AppRole;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null; needsVerification: boolean }>;
+  signUp: (email: string, password: string, fullName: string, userType?: string) => Promise<{ error: string | null; needsVerification: boolean }>;
   signOut: () => Promise<void>;
 }
 
