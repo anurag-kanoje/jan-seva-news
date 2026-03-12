@@ -17,8 +17,8 @@ const AdminWriters = () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "writer");
     if (!roles?.length) { setWriters([]); return; }
     const userIds = roles.map((r) => r.user_id);
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, is_active, created_at").in("user_id", userIds);
-    setWriters(profiles ?? []);
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, is_active, created_at").in("id", userIds);
+    setWriters((profiles ?? []).map(p => ({ user_id: p.id, full_name: p.full_name, is_active: p.is_active, created_at: p.created_at })));
   };
   useEffect(() => { fetchWriters(); }, []);
 
