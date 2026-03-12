@@ -23,7 +23,7 @@ const AdminWriters = () => {
   useEffect(() => { fetchWriters(); }, []);
 
   const toggleActive = async (userId: string, currentActive: boolean) => {
-    const { error } = await supabase.from("profiles").update({ is_active: !currentActive }).eq("user_id", userId);
+    const { error } = await supabase.from("profiles").update({ is_active: !currentActive }).eq("id", userId);
     if (error) toast({ title: "त्रुटि", description: error.message, variant: "destructive" });
     else { toast({ title: !currentActive ? "लेखक सक्रिय" : "लेखक निष्क्रिय" }); fetchWriters(); }
   };

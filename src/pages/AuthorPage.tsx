@@ -17,7 +17,7 @@ const AuthorPage = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => { if (!id) return; supabase.from("profiles").select("full_name").eq("user_id", id).single().then(({ data }) => setAuthorName(data?.full_name ?? "")); }, [id]);
+  useEffect(() => { if (!id) return; supabase.from("profiles").select("full_name").eq("id", id).single().then(({ data }) => setAuthorName(data?.full_name ?? "")); }, [id]);
   useEffect(() => {
     if (!id) return;
     const fetch = async () => {

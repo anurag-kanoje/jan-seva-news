@@ -17,11 +17,11 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, created_at").order("created_at", { ascending: false });
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, created_at").order("created_at", { ascending: false });
     const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
     const roleMap = new Map<string, { role: string; id: string }>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, { role: r.role, id: r.id }));
-    setUsers((profiles ?? []).map((p) => ({ user_id: p.user_id, full_name: p.full_name, created_at: p.created_at, role: roleMap.get(p.user_id)?.role ?? null, role_id: roleMap.get(p.user_id)?.id ?? null })));
+    setUsers((profiles ?? []).map((p) => ({ user_id: p.id, full_name: p.full_name, created_at: p.created_at, role: roleMap.get(p.id)?.role ?? null, role_id: roleMap.get(p.id)?.id ?? null })));
     setLoading(false);
   };
   useEffect(() => { fetchUsers(); }, []);

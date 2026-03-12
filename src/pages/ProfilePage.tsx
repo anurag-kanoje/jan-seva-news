@@ -27,7 +27,7 @@ const ProfilePage = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("user_id", user.id);
+    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
     setSaving(false);
     if (error) toast({ title: "त्रुटि", description: error.message, variant: "destructive" });
     else toast({ title: "प्रोफ़ाइल अपडेट हुई" });
