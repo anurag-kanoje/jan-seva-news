@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string, userType?: string) => Promise<{ error: string | null; needsVerification: boolean }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -35,18 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-          setTimeout(() => fetchRole(currentUser.id), 0);
-        } else {
-          setRole(null);
-        }
-        setLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        setTimeout(() => fetchRole(currentUser.id), 0);
+      } else {
+        setRole(null);
       }
-    );
+      setLoading(false);
+    });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
@@ -85,14 +86,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { full_name: fullName, user_type: userType },
       },
     });
+
     if (error) {
       if (error.message.includes("already registered")) {
         return { error: "यह ईमेल पहले से पंजीकृत है। कृपया लॉगिन करें।", needsVerification: false };
       }
+      if (error.message.includes("security purposes") || error.message.includes("rate limit")) {
+        return { error: "बहुत जल्दी-जल्दी अनुरोध हो रहे हैं। कृपया 1 मिनट बाद फिर प्रयास करें।", needsVerification: false };
+      }
+      if (error.message.includes("Failed to fetch")) {
+        return { error: "नेटवर्क समस्या के कारण साइन अप पूरा नहीं हुआ। कृपया दोबारा प्रयास करें।", needsVerification: false };
+      }
       return { error: error.message, needsVerification: false };
     }
+
     const needsVerification = !!(data.user && !data.user.email_confirmed_at);
     return { error: null, needsVerification };
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    const redirectUrl = window.location.origin + "/auth/callback";
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      if (error.message.includes("security purposes") || error.message.includes("rate limit")) {
+        return { error: "वेरिफिकेशन ईमेल बार-बार नहीं भेजा जा सकता। कृपया 1 मिनट बाद पुनः प्रयास करें।" };
+      }
+      return { error: error.message };
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
@@ -102,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, resendVerificationEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
