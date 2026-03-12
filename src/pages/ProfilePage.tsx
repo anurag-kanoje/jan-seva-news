@@ -18,7 +18,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("full_name").eq("user_id", user.id).single().then(({ data }) => { if (data) setFullName(data.full_name); });
+    supabase.from("profiles").select("full_name").eq("id", user.id).single().then(({ data }) => { if (data) setFullName(data.full_name); });
     supabase.from("articles").select("status, views").eq("author_id", user.id).then(({ data }) => {
       if (data) setStats({ total: data.length, approved: data.filter((a) => a.status === "approved").length, pending: data.filter((a) => a.status === "pending").length, views: data.reduce((s, a: any) => s + a.views, 0) });
     });
@@ -27,7 +27,7 @@ const ProfilePage = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("user_id", user.id);
+    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
     setSaving(false);
     if (error) toast({ title: "त्रुटि", description: error.message, variant: "destructive" });
     else toast({ title: "प्रोफ़ाइल अपडेट हुई" });
