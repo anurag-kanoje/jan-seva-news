@@ -14,20 +14,38 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const { error } = await supabase.auth.getSession();
+        const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
+        const authError = hashParams.get("error_description") || hashParams.get("error");
+
+        if (authError) {
+          setStatus("error");
+          setMessage(decodeURIComponent(authError));
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+
         if (error) {
           setStatus("error");
           setMessage(error.message);
-        } else {
-          setStatus("success");
-          setMessage("आपका ईमेल सफलतापूर्वक सत्यापित हो गया है!");
-          setTimeout(() => navigate("/login", { replace: true }), 3000);
+          return;
         }
+
+        if (!data.session) {
+          setStatus("error");
+          setMessage("यह verification link अमान्य या expired है। कृपया signup स्क्रीन से नया लिंक भेजें।");
+          return;
+        }
+
+        setStatus("success");
+        setMessage("आपका ईमेल सफलतापूर्वक सत्यापित हो गया है!");
+        setTimeout(() => navigate("/login", { replace: true }), 3000);
       } catch {
         setStatus("error");
         setMessage("सत्यापन में त्रुटि हुई। कृपया पुनः प्रयास करें।");
       }
     };
+
     handleCallback();
   }, [navigate]);
 
@@ -47,7 +65,7 @@ const AuthCallback = () => {
           )}
           {status === "success" && (
             <div className="flex flex-col items-center gap-3">
-              <CheckCircle className="h-12 w-12 text-green-600" />
+              <CheckCircle className="h-12 w-12 text-primary" />
               <p className="text-foreground font-medium">{message}</p>
               <p className="text-sm text-muted-foreground">आपको लॉगिन पेज पर भेजा जा रहा है...</p>
               <Button onClick={() => navigate("/login", { replace: true })}>लॉगिन करें</Button>
@@ -57,7 +75,7 @@ const AuthCallback = () => {
             <div className="flex flex-col items-center gap-3">
               <XCircle className="h-12 w-12 text-destructive" />
               <p className="text-destructive font-medium">{message}</p>
-              <Button onClick={() => navigate("/login", { replace: true })}>लॉगिन पेज पर जाएं</Button>
+              <Button onClick={() => navigate("/signup", { replace: true })}>साइन अप पर जाएं</Button>
             </div>
           )}
         </CardContent>
