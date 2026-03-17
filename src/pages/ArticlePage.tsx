@@ -56,7 +56,19 @@ const ArticlePage = () => {
           <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{article.views} व्यू</span>
         </div>
         {article.image_url && <img src={article.image_url} alt={article.title} className="w-full rounded-lg mb-6 max-h-[500px] object-cover" loading="lazy" />}
-        <article className="prose prose-lg max-w-none text-foreground leading-relaxed whitespace-pre-wrap">{article.content}</article>
+        
+        {/* Top Ad */}
+        <div className="my-6 border border-dashed border-border rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground text-xs py-4">
+          <span>विज्ञापन स्थान — Top Banner</span>
+        </div>
+
+        <article className="prose prose-lg max-w-none text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: article.content }} />
+
+        {/* Bottom Ad */}
+        <div className="my-6 border border-dashed border-border rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground text-xs py-4">
+          <span>विज्ञापन स्थान — Bottom Banner</span>
+        </div>
+
         {related.length > 0 && (<section className="mt-12"><h2 className="section-title font-hindi">संबंधित समाचार</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-6">{related.map((r) => <ArticleCardPublic key={r.id} {...r} />)}</div></section>)}
       </main>
       <Footer />
