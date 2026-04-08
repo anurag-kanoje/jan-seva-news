@@ -4,17 +4,10 @@ interface AdSlotProps {
   slot: string;
   format?: "auto" | "rectangle" | "horizontal" | "vertical";
   className?: string;
+  label?: string;
 }
 
-/**
- * Google AdSense Ad Slot component.
- * To activate: 
- * 1. Add your AdSense script to index.html: <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXX" crossorigin="anonymous"></script>
- * 2. Replace the slot prop with your actual ad slot ID
- * 
- * For now it renders a placeholder.
- */
-const AdSlot = ({ slot, format = "auto", className = "" }: AdSlotProps) => {
+const AdSlot = ({ slot, format = "auto", className = "", label }: AdSlotProps) => {
   const adRef = useRef<HTMLDivElement>(null);
   const isAdSenseLoaded = typeof (window as any).adsbygoogle !== "undefined";
 
@@ -23,7 +16,7 @@ const AdSlot = ({ slot, format = "auto", className = "" }: AdSlotProps) => {
       try {
         ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
       } catch (e) {
-        console.error("AdSense error:", e);
+        // AdSense may throw if ad already loaded
       }
     }
   }, [isAdSenseLoaded]);
@@ -42,12 +35,11 @@ const AdSlot = ({ slot, format = "auto", className = "" }: AdSlotProps) => {
     );
   }
 
-  // Placeholder when AdSense is not loaded
   return (
     <div className={`border border-dashed border-border rounded-lg bg-muted/30 flex items-center justify-center text-muted-foreground text-xs ${className}`}>
       <div className="text-center py-4 px-2">
         <p className="font-medium">विज्ञापन स्थान</p>
-        <p className="text-[10px] mt-1">Ad Slot: {slot}</p>
+        <p className="text-[10px] mt-1">{label || `Ad Slot: ${slot}`}</p>
       </div>
     </div>
   );
