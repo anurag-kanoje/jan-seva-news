@@ -50,7 +50,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["admin", "writer"]}><Dashboard /></ProtectedRoute>} />
 
                 {/* Writer routes */}
                 <Route path="/writer" element={<ProtectedRoute allowedRoles={["writer", "admin"]}><WriterDashboard /></ProtectedRoute>} />
