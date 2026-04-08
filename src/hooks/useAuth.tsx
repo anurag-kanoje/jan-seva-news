@@ -23,6 +23,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRole = async (userId: string) => {
     try {
+      // Check if there's a pending writer role to assign
+      const pendingWriterId = localStorage.getItem("pending_writer_role");
+      if (pendingWriterId === userId) {
+        localStorage.removeItem("pending_writer_role");
+        // Try to insert writer role (ignore if already exists)
+        await supabase.from("user_roles").upsert(
+          { user_id: userId, role: "writer" },
+          { onConflict: "user_id,role" }
+        );
+      }
+
       const { data } = await supabase
         .from("user_roles")
         .select("role")
@@ -101,6 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const needsVerification = !!(data.user && !data.user.email_confirmed_at);
+
+    // If writer and user was created, insert role (will work after email verification when they first log in)
+    if (data.user && userType === "writer") {
+      // Store intent — role will be assigned on first login via onAuthStateChange
+      localStorage.setItem("pending_writer_role", data.user.id);
+    }
+
     return { error: null, needsVerification };
   };
 
