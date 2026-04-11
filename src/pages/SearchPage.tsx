@@ -24,15 +24,28 @@ const SearchPage = () => {
   useEffect(() => {
     const trimmed = q.trim().slice(0, 200);
     if (!trimmed) { setArticles([]); setTotal(0); return; }
-    const fetch = async () => {
+    const doSearch = async () => {
       setLoading(true);
-      const from = (page - 1) * PER_PAGE;
-      const searchTerm = `%${trimmed}%`;
-      const { data, count } = await supabase.from("articles").select("*, profiles:author_id(full_name), categories:category_id(name)", { count: "exact" }).eq("status", "approved").or(`title.ilike.${searchTerm},excerpt.ilike.${searchTerm},content.ilike.${searchTerm}`).order("created_at", { ascending: false }).range(from, from + PER_PAGE - 1);
-      setArticles((data ?? []).map((a: any) => ({ ...a, category_name: a.categories?.name ?? null, author_name: a.profiles?.full_name ?? null })));
-      setTotal(count ?? 0); setLoading(false);
+      try {
+        const from = (page - 1) * PER_PAGE;
+        const searchTerm = `%${trimmed}%`;
+        const { data, count, error } = await supabase.from("articles").select("*, profiles:author_id(full_name), categories:category_id(name)", { count: "exact" }).eq("status", "approved").or(`title.ilike.${searchTerm},excerpt.ilike.${searchTerm},content.ilike.${searchTerm}`).order("created_at", { ascending: false }).range(from, from + PER_PAGE - 1);
+        if (error) {
+          // Fallback without joins
+          const { data: fb, count: fbc } = await supabase.from("articles").select("*", { count: "exact" }).eq("status", "approved").or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`).order("created_at", { ascending: false }).range(from, from + PER_PAGE - 1);
+          setArticles((fb ?? []).map((a: any) => ({ ...a, category_name: null, author_name: null })));
+          setTotal(fbc ?? 0);
+        } else {
+          setArticles((data ?? []).map((a: any) => ({ ...a, category_name: a.categories?.name ?? null, author_name: a.profiles?.full_name ?? null })));
+          setTotal(count ?? 0);
+        }
+      } catch {
+        setArticles([]);
+        setTotal(0);
+      }
+      setLoading(false);
     };
-    fetch();
+    doSearch();
   }, [q, page]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setSearchParams({ q: query }); };

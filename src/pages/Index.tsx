@@ -19,21 +19,61 @@ const Index = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => { supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? [])); }, []);
+  useEffect(() => {
+    supabase.from("categories").select("id, name").order("name").then(({ data, error }) => {
+      if (error) { console.warn("Categories fetch error:", error.message); }
+      setCategories(data ?? []);
+    });
+  }, []);
 
   useEffect(() => {
     const fetchArticles = async () => {
       setLoading(true);
-      const from = (page - 1) * PER_PAGE;
-      const { data, count } = await supabase.from("articles").select("*, profiles:author_id(full_name), categories:category_id(name)", { count: "exact" }).eq("status", "approved").order("created_at", { ascending: false }).range(from, from + PER_PAGE - 1);
-      setArticles((data ?? []).map((a: any) => ({ ...a, category_name: a.categories?.name ?? null, author_name: a.profiles?.full_name ?? null })));
-      setTotal(count ?? 0);
+      try {
+        const from = (page - 1) * PER_PAGE;
+        const { data, count, error } = await supabase
+          .from("articles")
+          .select("*, profiles:author_id(full_name), categories:category_id(name)", { count: "exact" })
+          .eq("status", "approved")
+          .order("created_at", { ascending: false })
+          .range(from, from + PER_PAGE - 1);
+        if (error) {
+          console.warn("Articles fetch error:", error.message);
+          // Fallback: try without joins
+          const { data: fallback, count: fbCount } = await supabase
+            .from("articles")
+            .select("*", { count: "exact" })
+            .eq("status", "approved")
+            .order("created_at", { ascending: false })
+            .range(from, from + PER_PAGE - 1);
+          setArticles((fallback ?? []).map((a: any) => ({ ...a, category_name: null, author_name: null })));
+          setTotal(fbCount ?? 0);
+        } else {
+          setArticles((data ?? []).map((a: any) => ({ ...a, category_name: a.categories?.name ?? null, author_name: a.profiles?.full_name ?? null })));
+          setTotal(count ?? 0);
+        }
+      } catch (err) {
+        console.warn("Articles fetch failed:", err);
+        setArticles([]);
+        setTotal(0);
+      }
       setLoading(false);
     };
     fetchArticles();
   }, [page]);
 
-  useEffect(() => { supabase.from("articles").select("id, title, views, created_at, slug").eq("status", "approved").order("views", { ascending: false }).limit(5).then(({ data }) => setTrending(data ?? [])); }, []);
+  useEffect(() => {
+    supabase
+      .from("articles")
+      .select("id, title, views, created_at, slug")
+      .eq("status", "approved")
+      .order("views", { ascending: false })
+      .limit(5)
+      .then(({ data, error }) => {
+        if (error) console.warn("Trending fetch error:", error.message);
+        setTrending(data ?? []);
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

@@ -31,42 +31,63 @@ const ArticlePage = () => {
     if (!slug) return;
     const fetchArticle = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("articles")
-        .select("*, profiles:author_id(full_name), categories:category_id(name)")
-        .eq("slug", slug)
-        .single();
+      try {
+        let data: any = null;
+        const { data: d, error } = await supabase
+          .from("articles")
+          .select("*, profiles:author_id(full_name), categories:category_id(name)")
+          .eq("slug", slug)
+          .single();
 
-      if (data) {
-        const a = data as any;
-        setArticle({
-          ...a,
-          category_name: a.categories?.name ?? null,
-          author_name: a.profiles?.full_name ?? null,
-        });
-
-        if (!hasViewedArticle(a.id)) {
-          markArticleViewed(a.id);
-          await supabase.rpc("increment_article_views", { article_id: a.id });
+        if (error) {
+          // Fallback without joins
+          const { data: fb } = await supabase.from("articles").select("*").eq("slug", slug).single();
+          data = fb;
+        } else {
+          data = d;
         }
 
-        if (a.category_id) {
-          const { data: rel } = await supabase
-            .from("articles")
-            .select("*, profiles:author_id(full_name), categories:category_id(name)")
-            .eq("status", "approved")
-            .eq("category_id", a.category_id)
-            .neq("id", a.id)
-            .order("created_at", { ascending: false })
-            .limit(3);
-          setRelated(
-            (rel ?? []).map((r: any) => ({
-              ...r,
-              category_name: r.categories?.name ?? null,
-              author_name: r.profiles?.full_name ?? null,
-            }))
-          );
+        if (data) {
+          const a = data as any;
+          setArticle({
+            ...a,
+            category_name: a.categories?.name ?? null,
+            author_name: a.profiles?.full_name ?? null,
+          });
+
+          if (!hasViewedArticle(a.id)) {
+            markArticleViewed(a.id);
+            try {
+              await supabase.rpc("increment_article_views", { article_id: a.id });
+            } catch {
+              console.warn("increment_article_views RPC not available");
+            }
+          }
+
+          if (a.category_id) {
+            try {
+              const { data: rel } = await supabase
+                .from("articles")
+                .select("*, profiles:author_id(full_name), categories:category_id(name)")
+                .eq("status", "approved")
+                .eq("category_id", a.category_id)
+                .neq("id", a.id)
+                .order("created_at", { ascending: false })
+                .limit(3);
+              setRelated(
+                (rel ?? []).map((r: any) => ({
+                  ...r,
+                  category_name: r.categories?.name ?? null,
+                  author_name: r.profiles?.full_name ?? null,
+                }))
+              );
+            } catch {
+              setRelated([]);
+            }
+          }
         }
+      } catch (err) {
+        console.warn("Article fetch failed:", err);
       }
       setLoading(false);
     };
@@ -116,12 +137,10 @@ const ArticlePage = () => {
     day: "numeric", month: "long", year: "numeric",
   });
 
-  // Insert inline ads every 3 paragraphs
   const insertInlineAds = (html: string): string => {
     const parts = html.split("</p>");
     const result: string[] = [];
     let pCount = 0;
-
     for (let i = 0; i < parts.length; i++) {
       if (parts[i].trim()) {
         result.push(parts[i] + "</p>");
@@ -146,9 +165,7 @@ const ArticlePage = () => {
         image={article.image_url || undefined}
       />
       <Header />
-
       <main className="container py-8 max-w-4xl">
-        {/* Back + Share */}
         <div className="flex items-center justify-between mb-6">
           <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-accent">
             <ArrowLeft className="w-4 h-4" /> वापस जाएं
@@ -157,21 +174,13 @@ const ArticlePage = () => {
             <Share2 className="w-4 h-4" /> शेयर
           </Button>
         </div>
-
-        {/* Top Ad */}
         <AdSlot slot="top-banner" format="horizontal" className="mb-6 min-h-[90px]" label="Top Banner" />
-
-        {/* Category */}
         {article.category_name && (
           <Link to={`/category/${article.category_id}`}>
             <Badge className="bg-accent text-accent-foreground mb-4">{article.category_name}</Badge>
           </Link>
         )}
-
-        {/* Title */}
         <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">{article.title}</h1>
-
-        {/* Meta */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6 flex-wrap">
           <Link to={`/author/${article.author_id}`} className="flex items-center gap-1 hover:text-accent">
             <User className="w-4 h-4" /> {article.author_name || "अज्ञात"}
@@ -179,34 +188,16 @@ const ArticlePage = () => {
           <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{dateStr}</span>
           <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{article.views} व्यू</span>
         </div>
-
-        {/* Featured Image */}
         {article.image_url && (
-          <img
-            src={article.image_url}
-            alt={article.title}
-            className="w-full rounded-lg mb-6 max-h-[500px] object-cover"
-            loading="lazy"
-          />
+          <img src={article.image_url} alt={article.title} className="w-full rounded-lg mb-6 max-h-[500px] object-cover" loading="lazy" />
         )}
-
-        {/* Article Content with inline ads */}
-        <article
-          className="prose prose-lg max-w-none text-foreground leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: contentWithAds }}
-        />
-
-        {/* Bottom Ad */}
+        <article className="prose prose-lg max-w-none text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: contentWithAds }} />
         <AdSlot slot="bottom-banner" format="horizontal" className="mt-8 min-h-[90px]" label="Bottom Banner" />
-
-        {/* Related Articles */}
         {related.length > 0 && (
           <section className="mt-12">
             <h2 className="section-title font-hindi">संबंधित समाचार</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {related.map((r) => (
-                <ArticleCardPublic key={r.id} {...r} />
-              ))}
+              {related.map((r) => (<ArticleCardPublic key={r.id} {...r} />))}
             </div>
           </section>
         )}

@@ -28,7 +28,8 @@ const WriterDashboard = () => {
       .select("id, title, status, views, created_at, slug")
       .eq("author_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.warn("Writer articles fetch error:", error.message); }
         const items = data ?? [];
         setArticles(items);
         setStats({
@@ -131,7 +132,7 @@ const WriterDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {recentArticles.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">कोई लेख नहीं</p>
+                <p className="text-sm text-muted-foreground text-center py-4">कोई लेख नहीं — नया लेख लिखकर शुरू करें!</p>
               ) : recentArticles.map(a => (
                 <Link key={a.id} to={`/writer/edit/${a.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
                   <div className="flex-1 min-w-0">
