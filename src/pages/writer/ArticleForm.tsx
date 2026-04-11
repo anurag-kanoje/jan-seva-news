@@ -60,7 +60,10 @@ const ArticleForm = () => {
 
   // Load categories
   useEffect(() => {
-    supabase.from("categories").select("id, name").then(({ data }) => setCategories(data ?? []));
+    supabase.from("categories").select("id, name").then(({ data, error }) => {
+      if (error) console.warn("Categories load error:", error.message);
+      setCategories(data ?? []);
+    });
   }, []);
 
   // Load existing article

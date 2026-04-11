@@ -12,6 +12,11 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
+import ResetPassword from "./pages/ResetPassword";
+import AboutPage from "./pages/AboutPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import ContactPage from "./pages/ContactPage";
 import Dashboard from "./pages/Dashboard";
 import ArticlePage from "./pages/ArticlePage";
 import CategoryPage from "./pages/CategoryPage";
@@ -50,6 +55,11 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/contact" element={<ContactPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["admin", "writer"]}><Dashboard /></ProtectedRoute>} />
 
                 {/* Writer routes */}

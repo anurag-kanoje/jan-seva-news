@@ -14,8 +14,15 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // 1. Check for errors in hash or query params
         const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
-        const authError = hashParams.get("error_description") || hashParams.get("error");
+        const queryParams = new URLSearchParams(window.location.search);
+
+        const authError =
+          hashParams.get("error_description") ||
+          hashParams.get("error") ||
+          queryParams.get("error_description") ||
+          queryParams.get("error");
 
         if (authError) {
           setStatus("error");
@@ -23,14 +30,50 @@ const AuthCallback = () => {
           return;
         }
 
-        const { data, error } = await supabase.auth.getSession();
+        // 2. Try PKCE token_hash verification (Supabase default for email links)
+        const tokenHash = queryParams.get("token_hash");
+        const type = queryParams.get("type");
 
+        if (tokenHash && type) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+
+          if (error) {
+            setStatus("error");
+            setMessage(error.message);
+            return;
+          }
+
+          setStatus("success");
+          setMessage("आपका ईमेल सफलतापूर्वक सत्यापित हो गया है!");
+          setTimeout(() => navigate("/login", { replace: true }), 3000);
+          return;
+        }
+
+        // 3. Check for access_token in hash (implicit flow)
+        const accessToken = hashParams.get("access_token");
+        if (accessToken) {
+          const { data, error } = await supabase.auth.getSession();
+          if (error || !data.session) {
+            setStatus("error");
+            setMessage("सत्यापन विफल। कृपया पुनः प्रयास करें।");
+            return;
+          }
+          setStatus("success");
+          setMessage("आपका ईमेल सफलतापूर्वक सत्यापित हो गया है!");
+          setTimeout(() => navigate("/login", { replace: true }), 3000);
+          return;
+        }
+
+        // 4. Fallback — try getting existing session
+        const { data, error } = await supabase.auth.getSession();
         if (error) {
           setStatus("error");
           setMessage(error.message);
           return;
         }
-
         if (!data.session) {
           setStatus("error");
           setMessage("यह verification link अमान्य या expired है। कृपया signup स्क्रीन से नया लिंक भेजें।");

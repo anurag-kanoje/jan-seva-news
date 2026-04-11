@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Trash2, ExternalLink } from "lucide-react";
 
-interface Article { id: string; title: string; status: string; views: number; created_at: string; author_id: string; profiles?: { full_name: string } | null; categories?: { name: string } | null; }
+interface Article { id: string; title: string; status: string; views: number; created_at: string; author_id: string; slug?: string; profiles?: { full_name: string } | null; categories?: { name: string } | null; }
 
 const AdminArticles = () => {
   const { toast } = useToast();
@@ -19,10 +19,22 @@ const AdminArticles = () => {
 
   const fetchArticles = async () => {
     setLoading(true);
-    let query = supabase.from("articles").select("id, title, status, views, created_at, author_id, slug, profiles:author_id(full_name), categories:category_id(name)").order("created_at", { ascending: false });
-    if (filter !== "all") query = query.eq("status", filter);
-    const { data } = await query;
-    setArticles((data as unknown as Article[]) ?? []);
+    try {
+      let query = supabase.from("articles").select("id, title, status, views, created_at, author_id, slug, profiles:author_id(full_name), categories:category_id(name)").order("created_at", { ascending: false });
+      if (filter !== "all") query = query.eq("status", filter);
+      const { data, error } = await query;
+      if (error) {
+        // Fallback without joins
+        let fbQuery = supabase.from("articles").select("id, title, status, views, created_at, author_id, slug").order("created_at", { ascending: false });
+        if (filter !== "all") fbQuery = fbQuery.eq("status", filter);
+        const { data: fb } = await fbQuery;
+        setArticles((fb as unknown as Article[]) ?? []);
+      } else {
+        setArticles((data as unknown as Article[]) ?? []);
+      }
+    } catch {
+      setArticles([]);
+    }
     setLoading(false);
   };
 
@@ -67,7 +79,7 @@ const AdminArticles = () => {
                   <TableCell className="text-sm text-muted-foreground">{new Date(a.created_at).toLocaleDateString("hi-IN")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Link to={`/article/${(a as any).slug || a.id}`} target="_blank"><Button variant="ghost" size="icon" title="देखें"><ExternalLink className="w-4 h-4" /></Button></Link>
+                      <Link to={`/article/${a.slug || a.id}`} target="_blank"><Button variant="ghost" size="icon" title="देखें"><ExternalLink className="w-4 h-4" /></Button></Link>
                       {a.status !== "approved" && <Button variant="ghost" size="icon" onClick={() => updateStatus(a.id, "approved")} title="स्वीकृत"><CheckCircle className="w-4 h-4 text-green-600" /></Button>}
                       {a.status !== "rejected" && <Button variant="ghost" size="icon" onClick={() => updateStatus(a.id, "rejected")} title="अस्वीकृत"><XCircle className="w-4 h-4 text-destructive" /></Button>}
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>

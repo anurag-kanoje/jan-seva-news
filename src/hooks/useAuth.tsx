@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string, userType?: string) => Promise<{ error: string | null; needsVerification: boolean }>;
   resendVerificationEmail: (email: string) => Promise<{ error: string | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -23,25 +24,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRole = async (userId: string) => {
     try {
-      // Check if there's a pending writer role to assign
       const pendingWriterId = localStorage.getItem("pending_writer_role");
       if (pendingWriterId === userId) {
         localStorage.removeItem("pending_writer_role");
-        // Try to insert writer role (ignore if already exists)
-        await supabase.from("user_roles").upsert(
-          { user_id: userId, role: "writer" },
-          { onConflict: "user_id,role" }
-        );
+        try {
+          await supabase.from("user_roles").upsert(
+            { user_id: userId, role: "writer" },
+            { onConflict: "user_id,role" }
+          );
+        } catch (e) {
+          console.warn("Could not assign writer role:", e);
+        }
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
+      
+      if (error) {
+        console.warn("Could not fetch role:", error.message);
+        setRole(null);
+        return;
+      }
       setRole(data?.role ?? null);
     } catch (err) {
-      console.error("Failed to fetch role:", err);
+      console.warn("Failed to fetch role:", err);
       setRole(null);
     }
   };
@@ -113,9 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const needsVerification = !!(data.user && !data.user.email_confirmed_at);
 
-    // If writer and user was created, insert role (will work after email verification when they first log in)
     if (data.user && userType === "writer") {
-      // Store intent — role will be assigned on first login via onAuthStateChange
       localStorage.setItem("pending_writer_role", data.user.id);
     }
 
@@ -127,18 +134,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
+      options: { emailRedirectTo: redirectUrl },
     });
-
     if (error) {
       if (error.message.includes("security purposes") || error.message.includes("rate limit")) {
         return { error: "वेरिफिकेशन ईमेल बार-बार नहीं भेजा जा सकता। कृपया 1 मिनट बाद पुनः प्रयास करें।" };
       }
       return { error: error.message };
     }
+    return { error: null };
+  };
 
+  const resetPasswordForEmail = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) return { error: error.message };
     return { error: null };
   };
 
@@ -149,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, resendVerificationEmail, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, resendVerificationEmail, resetPasswordForEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
